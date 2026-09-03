@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dr. Shuvojit Moulik — Consultation Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --ink: #211d18; --ink-soft: #4a433c; --muted: #85796a;
+    --oxblood: #7a2331; --oxblood-deep: #551621; --brass: #a9823f;
+    --teal: #2f6f6b; --teal-deep: #1f4c49; --teal-tint: #e6f0ef;
+    --parchment: #f4efe4; --paper: #fffdf8;
+    --rule: #ddd0b8; --rule-soft: #ebe3d2; --radius: 4px;
+  }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--parchment); color: var(--ink); font-family: 'Public Sans', Arial, sans-serif; line-height: 1.5; }
+
+  .masthead { padding: 30px 32px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; gap: 16px; }
+  .masthead .mark { width: 40px; height: 40px; border: 1.5px solid var(--teal); border-radius: 50%; color: var(--teal);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .masthead h1 { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; margin: 0; }
+  .masthead p { margin: 2px 0 0; color: var(--muted); font-size: 13px; font-style: italic; font-family: 'Fraunces', serif; }
+  .masthead .refresh { margin-left: auto; }
+
+  button.ghost-btn { background: none; border: 1px solid var(--rule); border-radius: var(--radius); padding: 9px 16px;
+    font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+  button.ghost-btn:hover { border-color: var(--teal); color: var(--teal-deep); }
+
+  .wrapper { max-width: 1240px; margin: 0 auto; padding: 34px 28px 80px; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  @media (max-width: 780px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi-card { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); padding: 18px 20px; }
+  .kpi-card .kpi-label { font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+  .kpi-card .kpi-value { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; color: var(--ink); }
+  .kpi-card.accent .kpi-value { color: var(--oxblood); }
+  .kpi-card.accent2 .kpi-value { color: var(--teal-deep); }
+
+  .panels { display: grid; grid-template-columns: 340px 1fr; gap: 22px; margin-bottom: 28px; align-items: start; }
+  @media (max-width: 900px) { .panels { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); padding: 22px; }
+  .panel h2 { font-family: 'Fraunces', serif; font-style: italic; font-weight: 500; font-size: 17px; margin: 0 0 16px; }
+  .chart-wrap { position: relative; height: 260px; }
+  .legend-list { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px 14px; }
+  .legend-list span.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+  .status-bars { display: flex; flex-direction: column; gap: 14px; }
+  .status-bar-row { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .status-bar-row .label { width: 110px; flex-shrink: 0; color: var(--ink-soft); }
+  .status-bar-row .track { flex: 1; height: 8px; background: var(--rule-soft); border-radius: 6px; overflow: hidden; }
+  .status-bar-row .fill { height: 100%; background: var(--teal); }
+  .status-bar-row .count { width: 26px; text-align: right; color: var(--muted); font-size: 12px; }
+
+  .table-panel { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); }
+  .table-head { padding: 18px 22px; border-bottom: 1px solid var(--rule); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .table-head h2 { font-family: 'Fraunces', serif; font-style: italic; font-weight: 500; font-size: 18px; margin: 0; margin-right: auto; }
+  select.filter, input.filter {
+    border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper); padding: 8px 10px; font-size: 12.5px;
+    font-family: 'Public Sans', sans-serif; color: var(--ink);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 11px; text-transform: none; color: var(--muted); font-weight: 600;
+    padding: 10px 16px; border-bottom: 1px solid var(--rule); background: var(--parchment); }
+  tbody td { padding: 12px 16px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(122,35,49,0.02); }
+
+  .cell-name { font-weight: 600; }
+  .cell-sub { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .cell-area { max-width: 220px; font-size: 12px; color: var(--ink-soft); }
+
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge.pending { background: #fff0e0; color: var(--brass); border: 1px solid #e9d2a4; }
+  .badge.forwarded { background: var(--teal-tint); color: var(--teal-deep); border: 1px solid #bcdad6; }
+
+  select.assign {
+    border: 1px solid var(--rule); border-radius: var(--radius); padding: 7px 8px; font-size: 12px;
+    font-family: 'Public Sans', sans-serif; color: var(--ink); background: var(--paper);
+  }
+
+  button.fwd-btn {
+    margin-top: 8px; padding: 7px 14px; background: var(--teal); color: #fff; border: none; border-radius: var(--radius);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  button.fwd-btn:hover { background: var(--teal-deep); }
+  button.fwd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); font-size: 13.5px; }
+
+  footer { text-align: center; padding: 30px 20px 50px; font-size: 11.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="mark">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12h4l2-7 4 14 2-9 2 2h6"/>
+    </svg>
+  </div>
+  <div>
+    <h1>Dr. Shuvojit Moulik — Consultation Dashboard</h1>
+    <p>Incoming requests · Central Research Facility</p>
+  </div>
+  <div class="refresh">
+    <button class="ghost-btn" id="refreshBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <div class="kpi-row">
+    <div class="kpi-card"><div class="kpi-label">Total requests</div><div class="kpi-value" id="kpiTotal">0</div></div>
+    <div class="kpi-card accent"><div class="kpi-label">Pending assignment</div><div class="kpi-value" id="kpiPending">0</div></div>
+    <div class="kpi-card accent2"><div class="kpi-label">Forwarded</div><div class="kpi-value" id="kpiForwarded">0</div></div>
+    <div class="kpi-card"><div class="kpi-label">Received today</div><div class="kpi-value" id="kpiToday">0</div></div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <h2>Requests by research interest area</h2>
+      <div class="chart-wrap"><canvas id="areaChart"></canvas></div>
+      <div class="legend-list" id="areaLegend"></div>
+    </div>
+    <div class="panel">
+      <h2>Requests by faculty assignment</h2>
+      <div class="status-bars" id="facultyBars"></div>
+    </div>
+  </div>
+
+  <div class="table-panel">
+    <div class="table-head">
+      <h2>All requests</h2>
+      <select class="filter" id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="Pending">Pending</option>
+        <option value="Forwarded">Forwarded</option>
+      </select>
+      <input class="filter" id="searchFilter" placeholder="Search student or area…">
+    </div>
+    <div id="tableWrap"></div>
+  </div>
+
+</div>
+
+<footer>Central Research Facility · Santosh Medical College</footer>
+
+<script>
+const faculty = [
+  { name: "Dr. Sayantani Karmakar", email: "sayantani_k.crf@santosh.ac.in" },
+  { name: "Dr. Abhishek Pandeya",   email: "pandeyaabhishek.crf@santosh.ac.in" },
+  { name: "Dr. Sanchaita Mishra",   email: "sanchaita_m.crf@santosh.ac.in" },
+  { name: "Ms. Awantika Das",       email: "awantikadas.crf@santosh.ac.in" },
+  { name: "Dr. Surbhi Kumari",      email: "drsurbhi.crf@santosh.ac.in" },
+  { name: "Dr. Gunjan Uttam",       email: "gunjanuttam.crf@santosh.ac.in" }
+];
+// If this page is hosted OUTSIDE Apps Script (e.g. GitHub Pages), set this
+// to your deployment's /exec URL so it can call the backend over fetch().
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbyX9AMFTT7TB-_UnkYsfTcJX7kLDQdavFq94YthTz0dp_MB0IvVgNRwLWUokhKbfOjM/exec";
+
+function callServer(action, payload) {
+  if (typeof google !== 'undefined' && google.script) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(err => reject(new Error(err.message)))[action](payload);
+    });
+  }
+  return fetch(EXEC_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, payload })
+  })
+    .then(r => r.json())
+    .then(j => j.ok ? j.result : Promise.reject(new Error(j.result)));
+}
+
+const MOULIK_EMAIL = "shuvojitmoulik.crf@santosh.ac.in";
+const facultyByName = Object.fromEntries(faculty.map(f => [f.name, f]));
+
+let requests = [];
+let chart = null;
+
+function loadRequests() {
+  callServer('listRequests', {})
+    .then(data => {
+      requests = data || [];
+      requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      render();
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('tableWrap').innerHTML = '<div class="empty-state">Could not load requests: ' + err.message + '</div>';
+    });
+}
+
+function areaLabel(area) {
+  return (area || '').split(' — ')[0] || 'Unspecified';
+}
+
+function render() {
+  renderKpis();
+  renderAreaChart();
+  renderFacultyBars();
+  renderTable();
+}
+
+function renderKpis() {
+  const today = new Date().toDateString();
+  document.getElementById('kpiTotal').textContent = requests.length;
+  document.getElementById('kpiPending').textContent = requests.filter(r => r.status === 'Pending').length;
+  document.getElementById('kpiForwarded').textContent = requests.filter(r => r.status === 'Forwarded').length;
+  document.getElementById('kpiToday').textContent = requests.filter(r => new Date(r.submittedAt).toDateString() === today).length;
+}
+
+const palette = ['#7a2331', '#a9823f', '#2f6f6b', '#5c7a99', '#8a6b8f', '#6b8f5c', '#c98a4b', '#4a433c', '#b25a5a', '#3f7a8f'];
+
+function renderAreaChart() {
+  const counts = {};
+  requests.forEach(r => { const a = areaLabel(r.area); counts[a] = (counts[a] || 0) + 1; });
+  const labels = Object.keys(counts);
+  const values = Object.values(counts);
+  const colors = labels.map((_, i) => palette[i % palette.length]);
+
+  const ctx = document.getElementById('areaChart').getContext('2d');
+  if (chart) chart.destroy();
+
+  if (labels.length === 0) {
+    document.getElementById('areaLegend').innerHTML = '<span>No requests yet.</span>';
+    return;
+  }
+
+  chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fffdf8', borderWidth: 2 }] },
+    options: { plugins: { legend: { display: false } }, cutout: '62%', maintainAspectRatio: false }
+  });
+
+  document.getElementById('areaLegend').innerHTML = labels.map((l, i) =>
+    `<span><span class="dot" style="background:${colors[i]}"></span>${l} (${values[i]})</span>`
+  ).join('');
+}
+
+function renderFacultyBars() {
+  const counts = {};
+  faculty.forEach(f => counts[f.name] = 0);
+  let unassigned = 0;
+  requests.forEach(r => {
+    if (r.assignedTo && counts.hasOwnProperty(r.assignedTo)) counts[r.assignedTo]++;
+    else if (r.status === 'Pending') unassigned++;
+  });
+  const max = Math.max(1, ...Object.values(counts), unassigned);
+  const el = document.getElementById('facultyBars');
+  el.innerHTML = '';
+  const rows = [{ label: 'Unassigned', value: unassigned, color: 'var(--brass)' }]
+    .concat(faculty.map(f => ({ label: f.name.replace(/^Dr\.\s|Ms\.\s/, ''), value: counts[f.name], color: 'var(--teal)' })));
+  rows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'status-bar-row';
+    row.innerHTML = `<div class="label">${r.label}</div>
+      <div class="track"><div class="fill" style="width:${(r.value / max) * 100}%; background:${r.color}"></div></div>
+      <div class="count">${r.value}</div>`;
+    el.appendChild(row);
+  });
+}
+
+function renderTable() {
+  const status = document.getElementById('statusFilter').value;
+  const search = document.getElementById('searchFilter').value.trim().toLowerCase();
+
+  let rows = requests;
+  if (status !== 'all') rows = rows.filter(r => r.status === status);
+  if (search) rows = rows.filter(r =>
+    (r.name || '').toLowerCase().includes(search) || (r.area || '').toLowerCase().includes(search));
+
+  const wrap = document.getElementById('tableWrap');
+  if (rows.length === 0) {
+    wrap.innerHTML = '<div class="empty-state">No requests match this view.</div>';
+    return;
+  }
+
+  const optionsHtml = faculty.map(f => `<option value="${f.name}">${f.name}</option>`).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Student</th><th>Dept / college</th><th>Interest area</th><th>Status</th><th>Assign &amp; forward</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${r.date || '—'}</td>
+            <td><div class="cell-name">${r.name}</div><div class="cell-sub">${r.mobile}</div><div class="cell-sub">${r.email}</div></td>
+            <td><div>${r.dept}</div><div class="cell-sub">${r.college}</div></td>
+            <td class="cell-area">${r.area}${r.remarks ? `<div class="cell-sub">Remarks: ${r.remarks}</div>` : ''}</td>
+            <td>${r.status === 'Forwarded'
+              ? `<span class="badge forwarded">Forwarded</span><div class="cell-sub">${r.assignedTo}</div>`
+              : `<span class="badge pending">Pending</span>`}</td>
+            <td>
+              <select class="assign" data-id="${r.id}" ${r.status === 'Forwarded' ? '' : ''}>
+                <option value="">— Choose faculty —</option>
+                ${optionsHtml}
+              </select>
+              <br>
+              <button class="fwd-btn" data-id="${r.id}">Forward request</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  wrap.querySelectorAll('.fwd-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      const select = wrap.querySelector(`select[data-id="${id}"]`);
+      const chosen = select.value;
+      if (!chosen) { alert('Choose a faculty member to forward this request to.'); return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Forwarding…';
+
+      const onDone = () => {
+        const req = requests.find(r => r.id === id);
+        if (req) { req.status = 'Forwarded'; req.assignedTo = chosen; }
+        render();
+      };
+
+      callServer('forwardRequest', { id, faculty: chosen })
+        .then(onDone)
+        .catch(err => {
+          alert('Something went wrong: ' + err.message);
+          btn.disabled = false;
+          btn.textContent = 'Forward request';
+        });
+    });
+  });
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadRequests);
+document.getElementById('statusFilter').addEventListener('change', renderTable);
+document.getElementById('searchFilter').addEventListener('input', renderTable);
+
+loadRequests();
+</script>
+</body>
+</html>
